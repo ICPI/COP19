@@ -54,4 +54,3 @@ df_mer %>%
   mutate(disaggragate = str_replace(disaggragate, "NA NA", "total")) %>% 
   mutate(class = "mer") %>% 
   select(ou = operatingunit, class, everything())
-  distinct(disaggragate)
