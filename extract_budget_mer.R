@@ -1,21 +1,20 @@
+
+
+# DEPENDENCIES ------------------------------------------------------------
+
 library(tidyverse)
 library(readxl)
 
-folderpath <- "C:/Users/achafetz/Documents/ICPI/COP19 Funding Letters"
+
+# BUDGET ------------------------------------------------------------------
+
+folderpath <- "~/ICPI/COP19 Funding Letters"
 
 df_budget <- read_xlsx(file.path(folderpath, "a. Summary of COP19 Planning Levels.xlsx"), 
                        sheet = "COP19 Planning Levels_FMTD",
                        skip = 4)
 
-df_budget %>% 
-  select(ou = `Operating Unit (OU); note: Special Notification Countries are highlighted`,
-         ends_with("(amount)"), `TOTAL PLANNING LEVEL..4`, starts_with("of which"), 
-         `Total COP19 New Funding`, starts_with("Applied")) %>% 
-  glimpse()
-  
-  
-  
-df_budget %>% 
+df_budget <- df_budget %>% 
   select(ou = `Operating Unit (OU); note: Special Notification Countries are highlighted`,
          ends_with("(amount)"), `TOTAL PLANNING LEVEL..4`, starts_with("of which"), 
          `Total COP19 New Funding`, starts_with("Applied"), -ends_with("(TOTAL)")) %>% 
@@ -33,24 +32,29 @@ df_budget %>%
   select(ou, class, everything())
 
 
-list.files("~/ICPI/Data")
+# MER ---------------------------------------------------------------------
 
-df_mer <- read_rds("~/ICPI/Data/MER_Structured_Dataset_OU_IM_FY17-18_20181221_v2_1.rds")
+folderpath_msd <- "~/ICPI/Data"
 
-c("HTS_TST", "HTS_TST_POS", "KP_PREV", "PREP_NEW", "KP_MAT", "OVC_SERV", "TX_PVLS")
+df_mer <- read_rds(file.path(folderpath_msd, "MER_Structured_Dataset_OU_IM_FY17-18_20181221_v2_1.rds"))
 
-
-df_mer %>% 
+df_mer <- df_mer %>% 
   filter((indicator %in% c("TX_NEW", "TX_CURR", "TB_PREV", "VMMC_CIRC") &
          numeratordenom == "N" & agecoarse %in% c("<15", "15+")) |
          (indicator %in% c("TX_NEW", "TX_CURR", "TB_PREV", "VMMC_CIRC", 
                              "HTS_TST", "HTS_TST_POS", "KP_PREV", "PREP_NEW", 
                              "KP_MAT", "OVC_SERV", "TX_PVLS") & 
            standardizeddisaggregate == "Total Numerator")) %>% 
-  unite(disaggragate , c(sex, agecoarse), sep = " ") %>% 
-  group_by(operatingunit, indicator, disaggragate) %>% 
-  summarize_at(vars(fy2018apr), sum, na.rm = TRUE) %>% 
+  unite(disaggregate , c(sex, agecoarse), sep = " ") %>% 
+  group_by(operatingunit, indicator, disaggregate) %>% 
+  summarize(val = sum(fy2018apr, na.rm = TRUE)) %>% 
   ungroup() %>% 
-  mutate(disaggragate = str_replace(disaggragate, "NA NA", "total")) %>% 
+  mutate(disaggregate = str_replace(disaggregate, "NA NA", "total")) %>% 
   mutate(class = "mer") %>% 
   select(ou = operatingunit, class, everything())
+
+
+# COMBINE OUTPUT ----------------------------------------------------------
+
+bind_rows(df_budget, df_mer)  %>% 
+write_csv(file.path(folderpath, "planning_source_data.csv"), na = "")
